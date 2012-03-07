@@ -3,26 +3,29 @@ require "odor/version"
 module Odor
   def self.run(*args)
     changed_files = %x[git status -s]
+
     changed_files.split("\n").each do |line|
       line = line.split
       check_file(line.last)
     end
+
+    puts "No smells found" unless @smell_detected
   end
 
   def self.check_file(filename)
     line_numbers = line_changes(filename)
-    issues = %x[rails_best_practices -f text #{filename} --silent]
-    issues = issues.split("\n")
+    issues = %x[rails_best_practices -f text #{filename} --silent --without-color].split("\n")
 
     issues.each do |hint|
       line_numbers.each do |num|
-        if hint.include?(num.to_s)
+        number = num.to_s
+        if hint.include?(number)
           puts hint
+          @smell_detected = true
           break
         end
       end
     end
-    return true
   end
 
   def self.line_changes(filename)
