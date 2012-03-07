@@ -1,0 +1,8 @@
+#!/usr/bin/env ruby
+require 'odor'
+trap("INT") do
+  puts("\n !    Command cancelled.")
+  exit
+end
+
+Odor.run(*ARGV)
