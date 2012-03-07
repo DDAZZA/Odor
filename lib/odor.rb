@@ -2,24 +2,17 @@ require "odor/version"
 
 module Odor
   def self.run(*args)
-    changed_files = %x[git status -s]
-
-    changed_files.split("\n").each do |line|
-      line = line.split
-      check_file(line.last)
+    %x[git status -s].split("\n").each do |line|
+      check_file(line.split.last)
     end
 
     puts "No smells found" unless @smell_detected
   end
 
-  def self.check_file(filename)
-    line_numbers = line_changes(filename)
-    issues = %x[rails_best_practices -f text #{filename} --silent --without-color].split("\n")
-
-    issues.each do |hint|
-      line_numbers.each do |num|
-        number = num.to_s
-        if hint.include?(number)
+  def self.check_file(file_name)
+    issues(file_name).each do |hint|
+      line_changes(file_name).each do |num|
+        if hint.include?(num.to_s)
           puts hint
           @smell_detected = true
           break
@@ -28,37 +21,33 @@ module Odor
     end
   end
 
-  def self.line_changes(filename)
-    changes = %x[git diff -U0 #{filename}]
-    changes = changes.split("\n")
+  def self.issues(file_name)
+    %x[rails_best_practices -f text #{file_name} --silent --without-color].split("\n")
+  end
+
+  def self.file_diff(file_name)
+    changes = %x[git diff -U0 #{file_name}].split("\n")
     changes.shift(4)
-    #changes = changes.map{ |c| c if !c.nil? && c.start_with?('@') }
 
     line_changes = []
-    changes.each do |c|
-      line_changes << c if !c.nil? && c.start_with?('@')
-    end
+    changes.each { |c| line_changes << c if !c.nil? && c.start_with?('@') }
+    return line_changes
+  end
 
+  # TODO split into mutiple methods
+  def self.line_changes(file_name)
     lines = []
 
-    line_changes.each do |s|
+    file_diff(file_name).each do |s|
       s = s.split
-
       s.shift(2)
-      li = s.first[1, 50].split(',')
 
+      li = s.first[1, 12].split(',')
       li.last.to_i.times do |i|
         lines << li.first.to_i + i
       end
     end
 
-#    s = changes.first.split
-#    s.shift(2)
-#    li = s.first[1, 50].split(',')
-#
-#    li.last.to_i.times do |i|
-#      lines << li.first.to_i + i
-#    end
     return lines
   end
 end
